@@ -1,0 +1,19 @@
+PUSHIMM 0//space for rv
+LINK//save and update FBR
+ADDSP 2//space for x and y
+//code for x = 5;
+PUSHIMM 5
+STOREOFF 1
+//code for y = (x+6);
+PUSHOFF 1
+PUSHIMM 6
+ADD
+STOREOFF 2
+//compute (x+y) and store in rv
+PUSHOFF 1
+PUSHOFF 2
+TIMES
+STOREOFF -1
+ADDSP -2 //pop locals
+POPFBR//restore FBR
+STOP

@@ -1,0 +1,34 @@
+//OS code to set up call to main
+PUSHIMM 0 //rv slot for main
+LINK  //save FBR
+JSR main //call main
+POPFBR 
+STOP
+
+main:
+          //set up call to abs
+          PUSHIMM 0 //return value slot for abs
+          READ //parameter to abs
+          LINK//save FBR and update FBR
+          JSR abs//call abs
+          POPFBR //restore FBR
+          ADDSP  -1//pop off parameter
+          //from code for return
+          JUMP mainEnd
+mainEnd:
+          STOREOFF -1//store result of call
+          JUMPIND
+abs:
+PUSHOFF -1//get n
+ISPOS //is it positive
+JUMPC pos//if so, jump to pos
+PUSHOFF  -1//get n
+PUSHIMM  -1//push -1
+TIMES//compute -n
+JUMP absEnd//go to end
+pos:
+PUSHOFF  -1//get n
+JUMP absEnd
+absEnd:
+STOREOFF  -2//store into r.v.
+JUMPIND//return

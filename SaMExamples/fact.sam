@@ -1,0 +1,52 @@
+//OS code to call main
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+
+main: 
+      //call to fact(10)
+      PUSHIMM 0
+      PUSHIMM 10
+      LINK
+      JSR fact
+      POPFBR
+      ADDSP -1
+      //code from return
+      JUMP mainEnd
+      //code from definition of main
+mainEnd:
+      STOREOFF -1
+      JUMPIND
+      
+fact: 
+      //if-then-else test
+      PUSHOFF -1 //get n
+      PUSHIMM 0  //0
+      EQUAL      //n==0?
+      JUMPC zer   //if so, jump to zer
+      //false side of conditional
+      PUSHOFF -1  //first operand of times
+
+      PUSHIMM 0 // fact(n-1)
+      PUSHOFF -1
+      PUSHIMM 1
+      SUB
+      LINK
+      JSR fact
+      POPFBR
+      ADDSP -1
+      
+      TIMES          //n*fact(n-1)
+     //code from return
+      JUMP factEnd
+
+     //true side of conditional
+zer: PUSHIMM 1
+      //code from return
+       JUMP factEnd
+      //code from definition of fact
+ factEnd:
+      STOREOFF -2
+      JUMPIND
