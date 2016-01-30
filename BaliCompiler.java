@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.util.Hashtable;
 
 import edu.cornell.cs.sam.io.SamTokenizer;
 import edu.cornell.cs.sam.io.Tokenizer;
@@ -11,6 +12,7 @@ import edu.cornell.cs.sam.io.Tokenizer.TokenType;
 
 public class BaliCompiler
 {
+	Hashtable<String, Integer> methodname;
 	static String compiler(String fileName) 
 	{
 		//System.out.println("compiler");
@@ -52,15 +54,9 @@ public class BaliCompiler
 		//Since the only data type is an int, you can safely check for int 
 		//in the tokenizer.
 		//TODO: add appropriate exception handlers to generate useful error msgs.
-		if (f.check("int")) //must match at begining
+		if (!f.check("int")) //must match at begining
 		{
-			//System.out.println("Fatal error: could not compile program");
-			System.out.println("Check int succeed!");
-			//return "STOP\n";
-		}
-		else
-		{
-			return "STOP\n";
+			throw new TokenierException("Invalid Method Type");
 		}
 	
 		String methodName;
@@ -72,30 +68,66 @@ public class BaliCompiler
 			case STRING:
 				methodName = f.getString();
 				break;			
+			default:
+				throw new TokenierException("Invalid Method Name");
 		}
 
-		//System.out.println(f.getString());
 		f.check ("("); // must be an opening parenthesis
-		String formals = getFormals(f);
-		f.check(")");  // must be an closing parenthesis
+		String formals = parseFp(f); //getFormals(f);
+		//f.check(")");  // must be an closing parenthesis
 		//You would need to read in formals if any
 		//And then have calls to getDeclarations and getStatements.
 		return null;
 	}
+	static String parseFp(SamTokenier f)
+	{
+		if (f.check(")"))
+		{
+			return "";
+		}
+		else
+		{
+			parseF(f);
+		}
+	}
 	static String getExp(SamTokenizer f) 
 	{
-			  switch (f.peekAtKind()) {
-				 case INTEGER: //E -> integer
-					return "PUSHIMM " + f.getInt() + "\n";
-				 case OPERATOR:  
-				 {
-				 }
-				 default:   return "ERROR\n";
-			  }
 	}
-	static String getFormals(SamTokenizer f){
-			return null;
+	static String parseF(SamTokenizer f){
+		if (!f.check("int"))
+		{
+			throw new TokenierException("Invalid Formal Type");
+		}
+		String id;
+		switch(f.peekAtKind())
+		{
+			case WORD:
+				id = f.getWord();
+				break;
+			case STRING:
+				id = f.getString();
+				break;
+			default:
+				throw new TokenierException("Invalid ID Type");
+		}
+		parseTIDp(f);
 	}
+	static String parseTIDp(SameTonkenier f){
+		if (f.check(")"))
+		{
+			return "";
+		}
+		else
+		{
+			parseTID(f);
+			parseTIDp(f);
+		}
+	}
+	static String parseTID(SameTokenier f){
+		if (!f.check(","))
+	}	
+
+
 	public static void main(String []args){
 		// First argument is input file
 		// Second argument is output file
