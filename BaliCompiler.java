@@ -11,6 +11,10 @@ import edu.cornell.cs.sam.io.Tokenizer.TokenType;
 
 public class BaliCompiler
 {
+    
+    
+    
+    
 	static String compiler(String fileName) 
 	{
 		//System.out.println("compiler");
