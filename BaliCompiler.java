@@ -60,21 +60,7 @@ public class BaliCompiler
 			return null;
 		}
 	
-		String methodName;
-		switch(f.peekAtKind())
-		{
-			case WORD:
-				methodName = f.getWord();
-				System.out.println("function word " + methodName);
-				break;
-			case STRING:
-				methodName = f.getString();
-				System.out.println("function string " + methodName);
-				break;			
-			default:
-				//throw new TokenierException("Invalid Method Name");
-				return null;
-		}
+		String methodName = f.getWord();;
 
 		f.check ("("); // must be an opening parenthesis
 		String formals = parseFp(f); //getFormals(f);
@@ -104,19 +90,7 @@ public class BaliCompiler
 			//throw new TokenierException("Invalid Formal Type");
 			return null;
 		}
-		String id;
-		switch(f.peekAtKind())
-		{
-			case WORD:
-				id = f.getWord();
-				break;
-			case STRING:
-				id = f.getString();
-				break;
-			default:
-				//throw new TokenierException("Invalid ID Type");
-				return null;
-		}
+		String id = f.getWord();
 		return parseTIDp(f);
 	}
 	static String parseTIDp(SamTokenizer f){
