@@ -9,6 +9,7 @@ import java.util.Hashtable;
 import edu.cornell.cs.sam.io.SamTokenizer;
 import edu.cornell.cs.sam.io.Tokenizer;
 import edu.cornell.cs.sam.io.Tokenizer.TokenType;
+import edu.cornell.cs.sam.io.TokenizerException;
 
 public class BaliCompiler
 {
@@ -56,8 +57,7 @@ public class BaliCompiler
 		//TODO: add appropriate exception handlers to generate useful error msgs.
 		if (!f.check("int")) //must match at begining
 		{
-			//throw new TokenierException("Invalid Method Type");
-			return null;
+			throw new TokenizerException("Invalid Method Type");
 		}
 	
 		String methodName = f.getWord();;
@@ -87,8 +87,7 @@ public class BaliCompiler
 	static String parseF(SamTokenizer f){
 		if (!f.check("int"))
 		{
-			//throw new TokenierException("Invalid Formal Type");
-			return null;
+			throw new TokenizerException("Invalid Formal Type");
 		}
 		String id = f.getWord();
 		return parseTIDp(f);
