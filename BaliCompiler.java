@@ -56,7 +56,8 @@ public class BaliCompiler
 		//TODO: add appropriate exception handlers to generate useful error msgs.
 		if (!f.check("int")) //must match at begining
 		{
-			throw new TokenierException("Invalid Method Type");
+			//throw new TokenierException("Invalid Method Type");
+			return null;
 		}
 	
 		String methodName;
@@ -64,12 +65,15 @@ public class BaliCompiler
 		{
 			case WORD:
 				methodName = f.getWord();
+				System.out.println("function word " + methodName);
 				break;
 			case STRING:
 				methodName = f.getString();
+				System.out.println("function string " + methodName);
 				break;			
 			default:
-				throw new TokenierException("Invalid Method Name");
+				//throw new TokenierException("Invalid Method Name");
+				return null;
 		}
 
 		f.check ("("); // must be an opening parenthesis
@@ -79,24 +83,26 @@ public class BaliCompiler
 		//And then have calls to getDeclarations and getStatements.
 		return null;
 	}
-	static String parseFp(SamTokenier f)
+	static String parseFp(SamTokenizer f)
 	{
 		if (f.check(")"))
 		{
-			return "";
+			return null;
 		}
 		else
 		{
-			parseF(f);
+			return parseF(f);
 		}
 	}
 	static String getExp(SamTokenizer f) 
 	{
+                return null;
 	}
 	static String parseF(SamTokenizer f){
 		if (!f.check("int"))
 		{
-			throw new TokenierException("Invalid Formal Type");
+			//throw new TokenierException("Invalid Formal Type");
+			return null;
 		}
 		String id;
 		switch(f.peekAtKind())
@@ -108,23 +114,24 @@ public class BaliCompiler
 				id = f.getString();
 				break;
 			default:
-				throw new TokenierException("Invalid ID Type");
+				//throw new TokenierException("Invalid ID Type");
+				return null;
 		}
-		parseTIDp(f);
+		return parseTIDp(f);
 	}
-	static String parseTIDp(SameTonkenier f){
+	static String parseTIDp(SamTokenizer f){
 		if (f.check(")"))
 		{
-			return "";
+			return null;
 		}
 		else
 		{
 			parseTID(f);
-			parseTIDp(f);
+			return parseTIDp(f);
 		}
 	}
-	static String parseTID(SameTokenier f){
-		if (!f.check(","))
+	static String parseTID(SamTokenizer f){
+          return null;
 	}	
 
 
