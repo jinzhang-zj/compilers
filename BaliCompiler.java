@@ -14,6 +14,31 @@ import edu.cornell.cs.sam.io.TokenizerException;
 public class BaliCompiler
 {
 	Hashtable<String, Integer> methodname;
+	// help function to determine next token type
+	static String checkType(SamTokenizer f)
+	{
+		switch (f.peekAtKind())
+		{
+			case CHARACTER:
+				return "char";
+			case COMMENT:
+				return "comment";
+			case EOF:
+				return "eof";
+			case FLOAT:
+				return "float";
+			case INTEGER:
+				return "integer";
+			case OPERATOR:
+				return "operator";
+			case STRING:
+				return "string";
+			case WORD:
+				return "word";
+			default:
+				return "unknown";
+		}
+	}
 	static String compiler(String fileName) 
 	{
 		//System.out.println("compiler");
@@ -62,7 +87,7 @@ public class BaliCompiler
 	
 		String methodName = f.getWord();;
 
-		f.check ("("); // must be an opening parenthesis
+		f.check ('('); // must be an opening parenthesis
 		String formals = parseFp(f); //getFormals(f);
 		//f.check(")");  // must be an closing parenthesis
 		//You would need to read in formals if any
@@ -100,7 +125,8 @@ public class BaliCompiler
 		else
 		{
 			parseTID(f);
-			return parseTIDp(f);
+			//parseTIDp(f);
+			return null;
 		}
 	}
 	static String parseTID(SamTokenizer f){
@@ -113,8 +139,9 @@ public class BaliCompiler
 		// Second argument is output file
 		System.out.println(args[0]);
 		String result = compiler (args[0]);
-		try (Writer writer = 
-		new BufferedWriter(new OutputStreamWriter(new FileOutputStream(args[1]), "utf-8"))) {
+		try {
+			Writer writer = new BufferedWriter(new OutputStreamWriter(
+				new FileOutputStream(args[1]), "utf-8"));
 			writer.write(result);
 		} catch (IOException ex) {
 			System.out.println ("Error in writing to output");
