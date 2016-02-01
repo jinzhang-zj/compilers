@@ -69,8 +69,7 @@ public class BaliCompiler
 		}
 		catch(Exception e)
 		{
-			System.out.println(e);
-			System.out.println("Fatal error: could not compile program");
+		    System.out.println(e.toString());
 			return "STOP\n";
 		}		
 	}
@@ -172,7 +171,9 @@ public class BaliCompiler
 	{
 		System.out.println("parseV");
 		String var = f.getWord();
-		return parseEp(f);
+		if(methodname.containsKey(var))
+		    throw new TokenizerException("Variable name already used");
+		else return parseEp(f);
 
 	}
 	static String parseEp(SamTokenizer f)
