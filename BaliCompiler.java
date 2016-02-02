@@ -14,6 +14,7 @@ import edu.cornell.cs.sam.io.TokenizerException;
 public class BaliCompiler
 {
 	static Hashtable<String, Integer> methodname;
+	static int loop;
 	// help function to determine next token type
 	static String checkType(SamTokenizer f)
 	{
@@ -82,7 +83,7 @@ public class BaliCompiler
 		//TODO: add appropriate exception handlers to generate useful error msgs.
 		if (!f.check("int")) //must match at begining
 		{
-			throw new TokenizerException("Invalid Method Type");
+			throw new TokenizerException("line " + f.lineNo() + "Invalid Method Type");
 		}
 
 		String methodName = f.getWord();
@@ -112,7 +113,7 @@ public class BaliCompiler
 		System.out.println("parseF");
 		if (!f.check("int"))
 		{
-			throw new TokenizerException("Invalid Formal Type");
+			throw new TokenizerException("line " + f.lineNo() + "Invalid Formal Type");
 		}
 		String id = f.getWord();
 		return id + parseTIDp(f);
@@ -274,25 +275,39 @@ public class BaliCompiler
 						String parsedS2 = parseS(f);
 						return null;
 					}
+					else
+						throw new TokenizerException("line " + f.lineNo() + ": missing else statment");
 				}
+				else
+					throw new TokenizerException("line " + f.lineNo() + ": missing close parenthesis");
 			}
+			else
+				throw new TokenizerException("line " + f.lineNo() + ": missing open parenthesis");
 		}
 
 		else if (f.check("while"))
 		{
+			loop++;
 			if(f.check('('))
 			{
 				String parsedEXP = parseEXP(f);
 				if(f.check(')'))
 				{
 					String parsedS = parseS(f);
+					loop--;
 					return null;
 				}
+				else
+					throw new TokenizerException("line " + f.lineNo() + ": missing close parenthesis");
 			}
+			else
+				throw new TokenizerException("line " + f.lineNo() + ": missing open parenthesis");
 		}
 		else if (f.check("break"))
 		{
-			if(f.check(';'))
+			if (loop <= 0)
+				throw new TokenizerException("line " + f.lineNo() + ": break outside the loop");
+			else if(f.check(';'))
 				return null;
 			else throw new TokenizerException("Semicolon expected");
 		}
@@ -490,6 +505,7 @@ public class BaliCompiler
 	public static void main(String []args){
 		// First argument is input file
 		// Second argument is output file
+		loop = 0;
 		System.out.println(args[0]);
 		methodname = new Hashtable<String, Integer>();
 		String result = compiler (args[0]);
