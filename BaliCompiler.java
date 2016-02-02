@@ -15,6 +15,7 @@ public class BaliCompiler
 {
 	static Hashtable<String, Integer> methodname;
 	static int loop;
+	static int labelCounter;
 	// help function to determine next token type
 	static String checkType(SamTokenizer f)
 	{
@@ -507,6 +508,7 @@ public class BaliCompiler
 		// First argument is input file
 		// Second argument is output file
 		loop = 0;
+		labelCounter = 0;
 		System.out.println(args[0]);
 		methodname = new Hashtable<String, Integer>();
 		String result = compiler (args[0]);
