@@ -77,7 +77,8 @@ public class BaliCompiler
 	static String getMethod(SamTokenizer f)
 	{
 		System.out.println("getMethod");
-		//TODO: add code to convert a method declaration to SaM code.
+		HashTable<String, Integer> variablename = new HashTable<String, Integer> variablename;
+		//TODO: add code to convert a method declaration to SaM code.t 
 		//Since the only data type is an int, you can safely check for int 
 		//in the tokenizer.
 		//TODO: add appropriate exception handlers to generate useful error msgs.
