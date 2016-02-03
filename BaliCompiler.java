@@ -80,7 +80,7 @@ public class BaliCompiler
 	{
 		System.out.println("getMethod");
 		String pgm = "";
-		Hashtable<String, Integer> sbt = new Hashtable<String, Integer> ();
+		Hashtable<String, Integer> sbt = new Hashtable<String, Integer>();
 		//TODO: add code to convert a method declaration to SaM code.t 
 		//Since the only data type is an int, you can safely check for int 
 		//in the tokenizer.
@@ -92,9 +92,10 @@ public class BaliCompiler
 
 		
 		String methodName = f.getWord();
+		
 		methodname.put(methodName, 1);
 
-		pgm += methodName + ":PUSHIMM 0\n";
+		pgm += methodName + ":\nPUSHIMM 0\n";
 
 		if (!f.check ('(')) 
 			throw new TokenizerException("line " + f.lineNo() + " missing open parenthesis");
@@ -107,25 +108,36 @@ public class BaliCompiler
 		for (String key: keys)
 			sbt.put(key, sbt.get(key) - arg_num);
 
-		pgm += "\tLINK\n";
 		pgm += parseB(f, sbt);
-		pgm += methodname + "End:\n";
+		pgm += methodName + "End:\n";
 		pgm += "STOREOFF -" + (arg_num + 1) + "\n";
 		int local = 0;
 		for (String key: keys)
 			if (sbt.get(key) > 0)
 				local++;
 		if (local != 0)
-			pgm += "ADD SP -" + local;
+			pgm += "ADD SP -" + local + "\n";
 		pgm += "JUMPIND\n";
 		return pgm;
+		
+		//TODO The main method needs to be handled differently, since thats where execution starts.
+		
+		//f.check ('('); // must be an opening parenthesis
+		
+		//String formals = parseFp(f, sbt); //getFormals(f, sbt);
+		
+		//String body = parseB(f, sbt);
+		//f.check(")");  // must be an closing parenthesis
+		//You would need to read in formals if any
+		//And then have calls to getDeclarations and getStatements.
+		//return formals+body;
 	}
 	static String parseFp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		System.out.println("parseFp");
 		if (f.check(')'))
 		{
-			return null;
+			return "";
 		}
 		else
 		{
@@ -148,10 +160,17 @@ public class BaliCompiler
 	{
 		System.out.println("parseTIDp");
 		if (f.check(')'))
-			
-			return null;
+			return "";
 		else
 			return parseTID(f, sbt) + parseTIDp(f, sbt);
+		//{
+		//	System.out.println("Reaching )");
+		//	return "";
+		//}
+		//else
+		//{
+		//	return parseTID(f, sbt) + parseTIDp(f, sbt);
+		//}
 	}
 	static String parseTID(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
@@ -171,6 +190,10 @@ public class BaliCompiler
 		sbt.put(s, idx);
 		return null;
 	}	
+	
+	
+	
+	
 	static String parseB(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		System.out.println("parseB");
@@ -181,9 +204,12 @@ public class BaliCompiler
 		}
 		return parseVp(f, sbt);
 	}
+	
+	
+	
+	
 	static String parseVp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
-		System.out.println("parseVp");
 		if (f.check("int"))
 		{
 			return parseV(f, sbt) + parseVp(f, sbt);
@@ -193,69 +219,121 @@ public class BaliCompiler
 			return parseSp(f, sbt);
 		}
 	}
+	
+	
+	
+	
 	static String parseV(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		System.out.println("parseV");
+		int arg_num = sbt.size();
+		if(!checkType(f).equals("word"))
+			throw new TokenizerException("Line number "+f.lineNo() + " : Valid variable name expected");
+		
 		String var = f.getWord();
 		if(methodname.containsKey(var))
 		    throw new TokenizerException("Variable name already used");
-		else return parseEp(f, sbt);
+	//	else return parseEp(f, sbt, arg_num);
 
+	//}
+	//static String parseEp(SamTokenizer f, Hashtable<String, Integer> sbt)
+		else 
+		{
+			int s = sbt.size();
+			
+			//We want to store the offset for var. 
+			//This will be (# of local variables already defined + 2)
+			
+			sbt.put(var, sbt.size() - arg_num + 1);
+			
+			//return "PUSHIMM 0\n" + parseDp(f, sbt, var);
+			return "PUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
+		}
 	}
-	static String parseEp(SamTokenizer f, Hashtable<String, Integer> sbt)
+	
+	
+	
+	 
+	
+	
+	
+	
+	static String parseEp(SamTokenizer f, Hashtable<String, Integer> sbt, String str, int arg_num)
 	{
 		System.out.println("parseEp");
-		if(f.check(','))
-			return parseIDEp(f, sbt);
+		if(f.test(','))
+			return parseIDEp(f, sbt, arg_num);
 		else if(f.test('='))
-			return parseE(f, sbt) + parseIDEp(f, sbt);
-		else if(f.check(';'))
+			return parseE(f, sbt, str);
+		else if(f.test(';'))
 		{
-			System.out.println("Reached variable declaration");
-			return null;
+			return parseIDEp(f, sbt, arg_num);
 		}
-		else throw new TokenizerException("Invalid Statement");
+		else throw new TokenizerException("Line number " + f.lineNo() + " : " + "Invalid statement");
 	}
-	static String parseE(SamTokenizer f, Hashtable<String, Integer> sbt)
+	
+	
+	
+	
+	static String parseE(SamTokenizer f, Hashtable<String, Integer> sbt, String str)
 	{
 		System.out.println("parseE");
 
-		if(f.check(';'))
-		{
-			System.out.println("End of variable declaration statement");
-			return null;
-		}
-		else if(f.check('='))
+		if(f.check('='))
 		{
 			System.out.println("Reached variable declaration");
-			return parseEXP(f, sbt);
+			//return parseEXP(f, sbt);
+			return parseEXP(f, sbt) + "STOREOFF "+sbt.get(str)+"\n" + parseIDEp(f, sbt, 0);
 		}
-		else throw new TokenizerException("Invalid Statement when parsing E");
+		else throw new TokenizerException("Line number " + f.lineNo()+ " : Invalid statement");
+	}
+	//static String parseIDEp(SamTokenizer f, Hashtable<String, Integer> sbt)
+	//{
+	//	if(f.check(','))
+	
+	
+	
+	
+	static String parseIDEp(SamTokenizer f, Hashtable<String, Integer> sbt, int arg_num)
+	{
+		System.out.println("parseIDEp");
 
-	}
-	static String parseIDEp(SamTokenizer f, Hashtable<String, Integer> sbt)
-	{
-		if(f.check(','))
-			return parseIDE(f, sbt) + parseIDEp(f, sbt);
+		if(f.test(','))
+			return parseIDE(f, sbt, arg_num) + parseIDEp(f, sbt, arg_num);
 		else if(f.check(';'))
-			return null;
-		else throw new TokenizerException("Invalid Statement");
+			return "";
+		else throw new TokenizerException("Line number " + f.lineNo() + " : " + "Invalid Statement IDEp");
 	}
-	static String parseIDE(SamTokenizer f, Hashtable<String, Integer> sbt)
+
+	
+	
+	
+	static String parseIDE(SamTokenizer f, Hashtable<String, Integer> sbt, int arg_num)
 	{
+		System.out.println("parseIDE");
+
 		if(f.check(','))
 		{
-			String word = f.getWord();
-			return parseEp(f, sbt);
+			//String word = f.getWord();
+			//return parseEp(f, sbt);
+			String var = f.getWord();
+			int s = sbt.size();
+			sbt.put(var, s - arg_num + 1);
+			
+			return "PUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
 		}
-		else throw new TokenizerException("Invalid Statement");
+		else throw new TokenizerException("Line number " + f.lineNo() + " : " + "Invalid Statement IDE");
 	}
+
+	
+	
+	
 	static String parseSp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		System.out.println("parseSp");
 		if (f.check('}'))
 		{
-			return null;
+			return "";
 		}
 		return parseS(f, sbt) + parseSp(f, sbt);
 	}
@@ -270,11 +348,11 @@ public class BaliCompiler
 			//	System.out.println("Missing curly bracket");
 			//	throw new TokenizerException("Missing curly bracket");
 			//}
-			return null;
+			return "";
 		}
 		else if (f.check(';'))
 		{
-			return null;
+			return "";
 		}
 		else if (f.check("return"))
 		{
@@ -307,6 +385,7 @@ public class BaliCompiler
 						ifs += "newLabel" + (labelCounter + 1) + ":\n";
 						labelCounter += 2;
 						return ifs;
+						//return "";
 					}
 					else
 						throw new TokenizerException("line " + f.lineNo() + ": missing else statment");
@@ -327,7 +406,7 @@ public class BaliCompiler
 				{
 					String parsedS = parseS(f, sbt);
 					loop--;
-					return null;
+					return "";
 				}
 				else
 					throw new TokenizerException("line " + f.lineNo() + ": missing close parenthesis");
@@ -340,34 +419,39 @@ public class BaliCompiler
 			if (loop <= 0)
 				throw new TokenizerException("line " + f.lineNo() + ": break outside the loop");
 			else if(f.check(';'))
-				return null;
+				return "";
 			else throw new TokenizerException("Semicolon expected");
 		}
 
-		String word = f.getWord();
-		System.out.println(word);
+		String var = f.getWord();
+		if(!sbt.containsKey(var))
+			throw new TokenizerException("Line number "+f.lineNo()+ " : Variable undefined");
+
 		if(f.check('='))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(f.check(';'))
-				return null;
+				return parsedEXP + "STOREOFF "+sbt.get(var)+"\n";
 			else
-				throw new TokenizerException("Semicolon expected");
+				throw new TokenizerException("Line number " + f.lineNo() + " : Semicolon expected");
 		}
-
-		return null;
+		else throw new TokenizerException("Line number "+f.lineNo()+ " : Assignment expected");
 	}
+	
+	
+	
+	
 	static String parseEXP(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		System.out.println("parseEXP");
 		if(f.check("true"))
 		{
-			return null;
+			return "PUSHIMM 1\n";
 		}
 
 		if(f.check("false"))
 		{
-			return null;
+			return "PUSHIMM 0\n";
 		}
 
 		if(f.check('('))
@@ -377,41 +461,48 @@ public class BaliCompiler
 
 		if(f.check('-'))
 		{
-			throw new TokenizerException("Negative integers must be within parenthesis"); //Need to give line number also?
+			throw new TokenizerException("Line number " + f.lineNo()+" : Negative integers must be within parenthesis");
 		}
+		
+		
 		switch(f.peekAtKind())
 		{
 
 		case INTEGER:
 			int n = f.getInt();
-			System.out.println(n);
-			return null;
+			return "PUSHIMM "+ n + "\n";
+			
 		case WORD:
 			String ID = f.getWord();
 
 			if(methodname.containsKey(ID))
 			{
-				System.out.println("Method call");
+				//TODO Handle method call here
 				if(f.check('('))
 					return parseA(f, sbt);
 				else
-				{
-					throw new TokenizerException("Variable name cannot be same as method name");
-				}
+					throw new TokenizerException("Line number " + f.lineNo() + " : " + ID + "is already used as method name");
 			}
-			else
-			{
-				System.out.println("Variable name");
 
-				//Here we need to add code for the case when ID is a variable
-				return null;
+			else if(sbt.containsKey(ID))
+			{
+				return "PUSHOFF " + sbt.get(ID) + "\n"; 
+				
 			}
+			
+			else 
+				throw new TokenizerException("Line number " + f.lineNo() + " : " + ID + " is undefined");
+			
 		default:
-			throw new TokenizerException("Invalid Expression"); //Need a more detailed error description
+			throw new TokenizerException("Line number " + f.lineNo() + " : Invalid Expression"); //Need a more detailed error description
 
 		}
 
 	}
+	
+	
+	
+	
 	static String parseX(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		System.out.println("parseX");
@@ -421,9 +512,9 @@ public class BaliCompiler
 
 			if(!f.check(')'))
 			{
-				throw new TokenizerException(") expected");
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			}
-			else return s;
+			else return s + "PUSHIMM -1\n" + "MULT\n";
 		}
 		if(f.check('!'))
 		{
@@ -431,102 +522,128 @@ public class BaliCompiler
 
 			if(!f.check(')'))
 			{
-				throw new TokenizerException(") expected");
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			}
-			else return s;
+			else return s + "NOT\n";
 		}
 
 		return parseEXP(f, sbt) + parseOPp(f, sbt);
 	}
+	
+	
+	
+	
 	static String parseOPp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
-		System.out.println("parseOPp");
+
 		if(f.check('+'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
+			
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else 
+				return parsedEXP + "ADD\n";
 
 		}
 		else if(f.check('-'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else 
+				return parsedEXP + "SUB\n";
 
 		}
 		else if(f.check('*'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else 
+				return parsedEXP + "TIMES\n";
 
 		}
 		else if(f.check('/'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else 
+				return parsedEXP + "DIV\n";
 
 		}
 		else if(f.check('>'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else 
+				return parsedEXP + "GREATER\n";
 
 		}
 		else if(f.check('<'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else return parsedEXP + "LESS\n";
 
 		}
 		else if(f.check('='))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else return parsedEXP + "EQUAL\n";
 
 		}
 		else if(f.check('|'))
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
-				throw new TokenizerException(") expected");
-			else return parsedEXP;
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else return parsedEXP + "OR\n";
+
+		}
+		else if(f.check('&'))
+		{
+			String parsedEXP = parseEXP(f, sbt);
+			if(!f.check(')'))
+				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
+			else return parsedEXP + "AND\n";
 
 		}
 		else if(f.check(')'))
 		{
-			return null;
+			return "";
 
 		}
-		else throw new TokenizerException("Invalid Expression");
+		else throw new TokenizerException("Line number " + f.lineNo() + " : Invalid Expression");
 	}
 
+	
+	
+	
 	static String parseA(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		if(f.check(')'))
-			return null;
+			return "";
 		else
 		{
+			//TODO: Handle actuals for method calls here
 			return parseEXP(f, sbt) + parseAp(f, sbt);
 		}
 	}
 
+	
+	
+	
 	static String parseAp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
+		//TODO Handle actuals for method calls here
 		if(f.check(')'))
-			return null;
+			return "";
 		else if(f.check(','))
 		{
 			return parseEXP(f, sbt) + parseAp(f, sbt);
@@ -534,7 +651,11 @@ public class BaliCompiler
 		else throw new TokenizerException("Invalid Expression");
 	}
 
-	public static void main(String []args){
+	
+	
+	
+	public static void main(String []args)
+	{
 		// First argument is input file
 		// Second argument is output file
 		loop = 0;
@@ -546,6 +667,7 @@ public class BaliCompiler
 			Writer writer = new BufferedWriter(new OutputStreamWriter(
 					new FileOutputStream(args[1]), "utf-8"));
 			writer.write(result);
+			writer.close();
 		} catch (IOException ex) {
 			System.out.println ("Error in writing to output");
 		}
@@ -554,4 +676,3 @@ public class BaliCompiler
 
 
 
-//Note to self: our grammar for E' is incorrect: shouldnt we have a production for ';'?
