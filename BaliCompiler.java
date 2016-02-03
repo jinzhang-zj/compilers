@@ -62,12 +62,18 @@ public class BaliCompiler
 	static String getProgram(SamTokenizer f)
 	{
 		System.out.println("getProgram");
+		String pgm="";
+		pgm += "\tPUSHIMM 0\n";
+		pgm += "\tLINK\n";
+		pgm += "\tJSR main\n";
+		pgm += "\tPOPFBR\n";
+		pgm += "\tSTOP\n\n";
 		try
 		{
-			String pgm="";
 			while(f.peekAtKind()!=TokenType.EOF)
 			{
-				pgm+= getMethod(f);
+				pgm += getMethod(f);
+				pgm += "\n";
 			}
 			return pgm;
 		}
@@ -88,7 +94,7 @@ public class BaliCompiler
 		//TODO: add appropriate exception handlers to generate useful error msgs.
 		if (!f.check("int")) //must match at begining
 		{
-			throw new TokenizerException("line " + f.lineNo() + " invalid Method Type");
+			throw new TokenizerException("Line number " + f.lineNo() + " : invalid Method Type");
 		}
 
 		
@@ -97,10 +103,10 @@ public class BaliCompiler
 		
 		methodname.put(methodName, 1);
 
-		pgm += methodName + ":\n\tPUSHIMM 0\n";
+		pgm += methodName + ":\n";  //\tPUSHIMM 0\n";
 
 		if (!f.check ('(')) 
-			throw new TokenizerException("line " + f.lineNo() + " missing open parenthesis");
+			throw new TokenizerException("Line number " + f.lineNo() + " : missing open parenthesis");
 
 		//You would need to read in formals if any
 		//And then have calls to getDeclarations and getStatements.
@@ -151,7 +157,7 @@ public class BaliCompiler
 		System.out.println("parseF");
 		if (!f.check("int"))
 		{
-			throw new TokenizerException("line " + f.lineNo() + "Invalid Formal Type");
+			throw new TokenizerException("Line number " + f.lineNo() + " : Invalid Formal Type");
 		}
 		String id = f.getWord();
 		int idx = sbt.size();
@@ -179,13 +185,13 @@ public class BaliCompiler
 		System.out.println("parseTID");
 		if (!f.check(','))
 		{
-			System.out.println("line " + f.lineNo() + ": Missing Comma");
-			throw new TokenizerException("line " + f.lineNo() + ": Missing Comma");
+			System.out.println("Line number " + f.lineNo() + " : Missing Comma");
+			throw new TokenizerException("Line number " + f.lineNo() + " : Missing Comma");
 		}
 		if (!f.check("int"))
 		{
-			System.out.println("line " + f.lineNo() + ": Missing Formal Type");
-			throw new TokenizerException("line " + f.lineNo() + ": Missing Formal Type");
+			System.out.println("Line number " + f.lineNo() + " : Missing Formal Type");
+			throw new TokenizerException("Line number " + f.lineNo() + " : Missing Formal Type");
 		}
 		String s = f.getWord();
 		int idx = sbt.size();
@@ -246,10 +252,10 @@ public class BaliCompiler
 			//We want to store the offset for var. 
 			//This will be (# of local variables already defined + 2)
 			
-			sbt.put(var, sbt.size() - arg_num + 1);
+			sbt.put(var, sbt.size() - arg_num + 2);
 			
 			//return "PUSHIMM 0\n" + parseDp(f, sbt, var);
-			return "\tPUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
+			return "\tPUSHIMM 0\n" + parseEp(f, sbt, var, arg_num) + parseIDEp(f, sbt, arg_num);
 		}
 	}
 	
@@ -264,14 +270,14 @@ public class BaliCompiler
 	{
 		System.out.println("parseEp");
 		if(f.test(','))
-			return parseIDEp(f, sbt, arg_num);
+			return ""; //parseIDEp(f, sbt, arg_num);
 		else if(f.test('='))
 			return parseE(f, sbt, str);
 		else if(f.test(';'))
 		{
-			return parseIDEp(f, sbt, arg_num);
+			return ""; //parseIDEp(f, sbt, arg_num);
 		}
-		else throw new TokenizerException("Line number " + f.lineNo() + " : " + "Invalid statement");
+		else throw new TokenizerException("Line number " + f.lineNo() + " : Invalid statement");
 	}
 	
 	
@@ -285,7 +291,7 @@ public class BaliCompiler
 		{
 			System.out.println("Reached variable declaration");
 			//return parseEXP(f, sbt);
-			return parseEXP(f, sbt) + "\tSTOREOFF "+sbt.get(str)+"\n" + parseIDEp(f, sbt, 0);
+			return parseEXP(f, sbt) + "\tSTOREOFF "+sbt.get(str)+"\n";
 		}
 		else throw new TokenizerException("Line number " + f.lineNo()+ " : Invalid statement");
 	}
@@ -392,13 +398,13 @@ public class BaliCompiler
 						//return "";
 					}
 					else
-						throw new TokenizerException("line " + f.lineNo() + ": missing else statment");
+						throw new TokenizerException("Line number " + f.lineNo() + ": missing else statment");
 				}
 				else
-					throw new TokenizerException("line " + f.lineNo() + ": missing close parenthesis");
+					throw new TokenizerException("Line number " + f.lineNo() + ": missing close parenthesis");
 			}
 			else
-				throw new TokenizerException("line " + f.lineNo() + ": missing open parenthesis");
+				throw new TokenizerException("Line number " + f.lineNo() + ": missing open parenthesis");
 		}
 		else if (f.check("while"))
 		{
@@ -423,15 +429,15 @@ public class BaliCompiler
 					return whs;
 				}
 				else
-					throw new TokenizerException("line " + f.lineNo() + ": missing close parenthesis");
+					throw new TokenizerException("Line number " + f.lineNo() + ": missing close parenthesis");
 			}
 			else
-				throw new TokenizerException("line " + f.lineNo() + ": missing open parenthesis");
+				throw new TokenizerException("Line number " + f.lineNo() + ": missing open parenthesis");
 		}
 		else if (f.check("break"))
 		{
 			if (loop <= 0)
-				throw new TokenizerException("line " + f.lineNo() + ": break outside the loop");
+				throw new TokenizerException("Line number " + f.lineNo() + ": break outside the loop");
 			else if(f.check(';'))
 				return "\tJUMP Label" + (wlabelCounter - 1) + "\n";
 			else throw new TokenizerException("Semicolon expected");
@@ -538,7 +544,7 @@ public class BaliCompiler
 			{
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			}
-			else return s + "\tPUSHIMM -1\n" + "MULT\n";
+			else return s + "\tPUSHIMM -1\n" + "\tTIMES\n";
 		}
 		if(f.check('!'))
 		{
