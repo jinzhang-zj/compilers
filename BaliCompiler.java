@@ -491,9 +491,19 @@ public class BaliCompiler
 
 			if(methodname.containsKey(ID))
 			{
-				//TODO Handle method call here
+				String mcall = "";
+				mcall += "\tPUSHIMM 0\n";
 				if(f.check('('))
-					return parseA(f, sbt);
+				{
+					int [] arg_num = {0};
+					mcall += parseA(f, sbt, arg_num);
+					mcall += "\tLINK\n";
+					mcall += "\tJSR " + ID + "\n";
+					mcall += "\tPOPFBR\n";
+					if (arg_num[0] != 0)
+						mcall += "\tADDSP -" + arg_num[0] + "\n";
+					return mcall;
+				}
 				else
 					throw new TokenizerException("Line number " + f.lineNo() + " : " + ID + "is already used as method name");
 			}
@@ -639,28 +649,30 @@ public class BaliCompiler
 	
 	
 	
-	static String parseA(SamTokenizer f, Hashtable<String, Integer> sbt)
+	static String parseA(SamTokenizer f, Hashtable<String, Integer> sbt, int [] arg_num)
 	{
 		if(f.check(')'))
 			return "";
 		else
 		{
+			arg_num[0]++;
 			//TODO: Handle actuals for method calls here
-			return parseEXP(f, sbt) + parseAp(f, sbt);
+			return parseEXP(f, sbt) + parseAp(f, sbt, arg_num);
 		}
 	}
 
 	
 	
 	
-	static String parseAp(SamTokenizer f, Hashtable<String, Integer> sbt)
+	static String parseAp(SamTokenizer f, Hashtable<String, Integer> sbt, int [] arg_num)
 	{
 		//TODO Handle actuals for method calls here
 		if(f.check(')'))
 			return "";
 		else if(f.check(','))
 		{
-			return parseEXP(f, sbt) + parseAp(f, sbt);
+			arg_num[0]++;
+			return parseEXP(f, sbt) + parseAp(f, sbt, arg_num);
 		}
 		else throw new TokenizerException("Invalid Expression");
 	}
