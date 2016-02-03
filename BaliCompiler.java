@@ -16,7 +16,8 @@ public class BaliCompiler
 {
 	static Hashtable<String, Integer> methodname;
 	static int loop;
-	static int labelCounter;
+	static int ilabelCounter, wlabelCounter;
+	static String mname;
 	// help function to determine next token type
 	static String checkType(SamTokenizer f)
 	{
@@ -92,10 +93,11 @@ public class BaliCompiler
 
 		
 		String methodName = f.getWord();
+		mname = methodName;
 		
 		methodname.put(methodName, 1);
 
-		pgm += methodName + ":\nPUSHIMM 0\n";
+		pgm += methodName + ":\n\tPUSHIMM 0\n";
 
 		if (!f.check ('(')) 
 			throw new TokenizerException("line " + f.lineNo() + " missing open parenthesis");
@@ -110,14 +112,14 @@ public class BaliCompiler
 
 		pgm += parseB(f, sbt);
 		pgm += methodName + "End:\n";
-		pgm += "STOREOFF -" + (arg_num + 1) + "\n";
+		pgm += "\tSTOREOFF -" + (arg_num + 1) + "\n";
 		int local = 0;
 		for (String key: keys)
 			if (sbt.get(key) > 0)
 				local++;
 		if (local != 0)
-			pgm += "ADD SP -" + local + "\n";
-		pgm += "JUMPIND\n";
+			pgm += "\tADDSP -" + local + "\n";
+		pgm += "\tJUMPIND\n";
 		return pgm;
 		
 		//TODO The main method needs to be handled differently, since thats where execution starts.
@@ -247,7 +249,7 @@ public class BaliCompiler
 			sbt.put(var, sbt.size() - arg_num + 1);
 			
 			//return "PUSHIMM 0\n" + parseDp(f, sbt, var);
-			return "PUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
+			return "\tPUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
 		}
 	}
 	
@@ -283,7 +285,7 @@ public class BaliCompiler
 		{
 			System.out.println("Reached variable declaration");
 			//return parseEXP(f, sbt);
-			return parseEXP(f, sbt) + "STOREOFF "+sbt.get(str)+"\n" + parseIDEp(f, sbt, 0);
+			return parseEXP(f, sbt) + "\tSTOREOFF "+sbt.get(str)+"\n" + parseIDEp(f, sbt, 0);
 		}
 		else throw new TokenizerException("Line number " + f.lineNo()+ " : Invalid statement");
 	}
@@ -320,7 +322,7 @@ public class BaliCompiler
 			int s = sbt.size();
 			sbt.put(var, s - arg_num + 1);
 			
-			return "PUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
+			return "\tPUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
 		}
 		else throw new TokenizerException("Line number " + f.lineNo() + " : " + "Invalid Statement IDE");
 	}
@@ -348,7 +350,7 @@ public class BaliCompiler
 			//	System.out.println("Missing curly bracket");
 			//	throw new TokenizerException("Missing curly bracket");
 			//}
-			return "";
+			return s;
 		}
 		else if (f.check(';'))
 		{
@@ -359,7 +361,7 @@ public class BaliCompiler
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(';'))
 				System.out.println("Semicolon expected");
-			return parsedEXP;
+			return parsedEXP + "\tJUMP " + mname + "End\n";
 
 		}
 		else if (f.check("if"))
@@ -368,9 +370,12 @@ public class BaliCompiler
 			String ifs = "";
 			if(f.check('('))
 			{
+				int l1 = ilabelCounter;
+				int l2 = ilabelCounter + 1;
+				ilabelCounter += 2;
 				String parsedEXP = parseEXP(f, sbt);
 				ifs += parsedEXP;
-				ifs += "\tJUMPC newLabel" + labelCounter + "\n";
+				ifs += "\tJUMPC newLabel" + l1 + "\n";
 				if(f.check(')'))
 				{
 					String parsedS = parseS(f, sbt);
@@ -379,11 +384,10 @@ public class BaliCompiler
 						System.out.println("Else part");
 						String parsedS2 = parseS(f, sbt);
 						ifs += parsedS2;
-						ifs += "\tJUMP newLabel" + (labelCounter + 1) + "\n";
-						ifs += "newLabel" + labelCounter + ":\n";
+						ifs += "\tJUMP newLabel" + l2 + "\n";
+						ifs += "newLabel" + l1 + ":\n";
 						ifs += parsedS;
-						ifs += "newLabel" + (labelCounter + 1) + ":\n";
-						labelCounter += 2;
+						ifs += "newLabel" + l2 + ":\n";
 						return ifs;
 						//return "";
 					}
@@ -399,14 +403,24 @@ public class BaliCompiler
 		else if (f.check("while"))
 		{
 			loop++;
+			int l1 = wlabelCounter;
+			int l2 = wlabelCounter + 1;
+			wlabelCounter += 2;
+			String whs = "Label" + l1 + ":\n";
 			if(f.check('('))
 			{
 				String parsedEXP = parseEXP(f, sbt);
+				whs += parsedEXP;
+				whs += "\tISNIL\n";
+				whs += "\tJUMPC Label" + l2 + "\n";
 				if(f.check(')'))
 				{
 					String parsedS = parseS(f, sbt);
+					whs += parsedS;
+					whs += "\tJUMP Label" + l1 + "\n";
+					whs += "Label" + l2 + ":\n";
 					loop--;
-					return "";
+					return whs;
 				}
 				else
 					throw new TokenizerException("line " + f.lineNo() + ": missing close parenthesis");
@@ -419,7 +433,7 @@ public class BaliCompiler
 			if (loop <= 0)
 				throw new TokenizerException("line " + f.lineNo() + ": break outside the loop");
 			else if(f.check(';'))
-				return "";
+				return "\tJUMP Label" + (wlabelCounter - 1) + "\n";
 			else throw new TokenizerException("Semicolon expected");
 		}
 
@@ -431,7 +445,7 @@ public class BaliCompiler
 		{
 			String parsedEXP = parseEXP(f, sbt);
 			if(f.check(';'))
-				return parsedEXP + "STOREOFF "+sbt.get(var)+"\n";
+				return parsedEXP + "\tSTOREOFF "+sbt.get(var)+"\n";
 			else
 				throw new TokenizerException("Line number " + f.lineNo() + " : Semicolon expected");
 		}
@@ -446,12 +460,12 @@ public class BaliCompiler
 		System.out.println("parseEXP");
 		if(f.check("true"))
 		{
-			return "PUSHIMM 1\n";
+			return "\tPUSHIMM 1\n";
 		}
 
 		if(f.check("false"))
 		{
-			return "PUSHIMM 0\n";
+			return "\tPUSHIMM 0\n";
 		}
 
 		if(f.check('('))
@@ -470,7 +484,7 @@ public class BaliCompiler
 
 		case INTEGER:
 			int n = f.getInt();
-			return "PUSHIMM "+ n + "\n";
+			return "\tPUSHIMM "+ n + "\n";
 			
 		case WORD:
 			String ID = f.getWord();
@@ -486,7 +500,7 @@ public class BaliCompiler
 
 			else if(sbt.containsKey(ID))
 			{
-				return "PUSHOFF " + sbt.get(ID) + "\n"; 
+				return "\tPUSHOFF " + sbt.get(ID) + "\n"; 
 				
 			}
 			
@@ -514,7 +528,7 @@ public class BaliCompiler
 			{
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			}
-			else return s + "PUSHIMM -1\n" + "MULT\n";
+			else return s + "\tPUSHIMM -1\n" + "MULT\n";
 		}
 		if(f.check('!'))
 		{
@@ -524,7 +538,7 @@ public class BaliCompiler
 			{
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			}
-			else return s + "NOT\n";
+			else return s + "\tNOT\n";
 		}
 
 		return parseEXP(f, sbt) + parseOPp(f, sbt);
@@ -543,7 +557,7 @@ public class BaliCompiler
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			else 
-				return parsedEXP + "ADD\n";
+				return parsedEXP + "\tADD\n";
 
 		}
 		else if(f.check('-'))
@@ -552,7 +566,7 @@ public class BaliCompiler
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			else 
-				return parsedEXP + "SUB\n";
+				return parsedEXP + "\tSUB\n";
 
 		}
 		else if(f.check('*'))
@@ -561,7 +575,7 @@ public class BaliCompiler
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			else 
-				return parsedEXP + "TIMES\n";
+				return parsedEXP + "\tTIMES\n";
 
 		}
 		else if(f.check('/'))
@@ -570,7 +584,7 @@ public class BaliCompiler
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			else 
-				return parsedEXP + "DIV\n";
+				return parsedEXP + "\tDIV\n";
 
 		}
 		else if(f.check('>'))
@@ -579,7 +593,7 @@ public class BaliCompiler
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
 			else 
-				return parsedEXP + "GREATER\n";
+				return parsedEXP + "\tGREATER\n";
 
 		}
 		else if(f.check('<'))
@@ -587,7 +601,7 @@ public class BaliCompiler
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
-			else return parsedEXP + "LESS\n";
+			else return parsedEXP + "\tLESS\n";
 
 		}
 		else if(f.check('='))
@@ -595,7 +609,7 @@ public class BaliCompiler
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
-			else return parsedEXP + "EQUAL\n";
+			else return parsedEXP + "\tEQUAL\n";
 
 		}
 		else if(f.check('|'))
@@ -603,7 +617,7 @@ public class BaliCompiler
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
-			else return parsedEXP + "OR\n";
+			else return parsedEXP + "\tOR\n";
 
 		}
 		else if(f.check('&'))
@@ -611,7 +625,7 @@ public class BaliCompiler
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(')'))
 				throw new TokenizerException("Line number " + f.lineNo() + " : ) expected");
-			else return parsedEXP + "AND\n";
+			else return parsedEXP + "\tAND\n";
 
 		}
 		else if(f.check(')'))
@@ -659,7 +673,8 @@ public class BaliCompiler
 		// First argument is input file
 		// Second argument is output file
 		loop = 0;
-		labelCounter = 0;
+		ilabelCounter = 0;
+		wlabelCounter = 0;
 		System.out.println(args[0]);
 		methodname = new Hashtable<String, Integer>();
 		String result = compiler (args[0]);
