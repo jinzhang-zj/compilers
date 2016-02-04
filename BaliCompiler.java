@@ -23,16 +23,10 @@ public class BaliCompiler
 	//Secondly, it helps us catch errors where the number of arguments in function call are not same as the number of arguments in the function definition
 	static Hashtable<String, Integer> methodname;
 	
-	//We have a variable loop which indicates whether, at any point, we are within a loop.
-	//This is necessary to ensure that there are no break statements outside the loop.
-	static int loop;
-	static int ilabelCounter, wlabelCounter, retCounter, envCounter;
-	
 	//Next, we have variables to count the number of if/while statements. 
 	//These are required to generate labels for the JUMP statements corresponding to if/while.
 	//We also count the number of return statements to ensure that every method has a return statement.
-	static int ilabelCounter, wlabelCounter, retCounter;
-	
+	static int loop, ilabelCounter, wlabelCounter, retCounter, envCounter;
 	
 	static boolean hasReturnStmt;
 	
