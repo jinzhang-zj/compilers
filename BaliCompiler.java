@@ -1,4 +1,5 @@
 import java.io.BufferedWriter;
+import java.lang.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -14,10 +15,43 @@ import edu.cornell.cs.sam.io.TokenizerException;
 
 public class BaliCompiler
 {
+	
+	//We have a hashtable called methodname, which stores the number of arguments in method definition
+	//Each time a new method is defined, its name is added to this table, together with the number of arguments
+	//This serves two purposes: 
+	//first, it helps us distinguish between variables and method calls 
+	//Secondly, it helps us catch errors where the number of arguments in function call are not same as the number of arguments in the function definition
 	static Hashtable<String, Integer> methodname;
+	
+	//We have a variable loop which indicates whether, at any point, we are within a loop.
+	//This is necessary to ensure that there are no break statements outside the loop.
 	static int loop;
 	static int ilabelCounter, wlabelCounter, retCounter, envCounter;
+	
+	//Next, we have variables to count the number of if/while statements. 
+	//These are required to generate labels for the JUMP statements corresponding to if/while.
+	//We also count the number of return statements to ensure that every method has a return statement.
+	static int ilabelCounter, wlabelCounter, retCounter;
+	
+	
+	static boolean hasReturnStmt;
+	
+	static boolean insideWhile;
+	
+	//Finally, we have a String variable mname that holds the name of the currently parsed method.
 	static String mname;
+	
+	static boolean checkReservedKeyword(String word)
+	{
+		if(word.equals("int") || word.equals("true") || word.equals("false") || word.equals("if") || word.equals("break") || word.equals("else") || word.equals("while") || word.equals("return"))
+			return true;
+		else 
+			return false;
+	}
+	
+	
+	
+	
 	static String checkType(SamTokenizer f)
 	{
 		switch (f.peekAtKind())
@@ -42,6 +76,10 @@ public class BaliCompiler
 				return "unknown";
 		}
 	}
+	
+	
+	
+	
 	static String compiler(String fileName) 
 	{
 		//returns SaM code for program in file
@@ -56,6 +94,10 @@ public class BaliCompiler
 			return "STOP\n";
 		}
 	}
+	
+	
+	
+	
 	static String getProgram(SamTokenizer f)
 	{
 		String pgm="";
@@ -79,6 +121,10 @@ public class BaliCompiler
 			return "STOP\n";
 		}		
 	}
+
+	
+	
+	
 	static String getMethod(SamTokenizer f)
 	{
 		String pgm = "";
@@ -89,12 +135,15 @@ public class BaliCompiler
 		}
 
 		retCounter = 0;		
-		String methodName = f.getWord();
-		mname = methodName;
+		mname = f.getWord();
+		//mname = methodName;
 		
-		methodname.put(methodName, 1);
+		if(checkReservedKeyword(mname))
+			throw new TokenizerException("Line number "+f.lineNo()+" : "+ mname +" is a keyword");
+		
+		methodname.put(mname, 1);
 
-		pgm += methodName + ":\n";
+		pgm += mname + ":\n";
 
 		if (!f.check ('(')) 
 			throw new TokenizerException("Line number " + f.lineNo() + " : Missing open parenthesis");
@@ -103,12 +152,14 @@ public class BaliCompiler
 		//And then have calls to getDeclarations and getStatements.
 		String formals = parseFp(f, sbt); 
 		int arg_num = sbt.size();
+		methodname.put(mname, arg_num);
+
 		Set<String> keys = sbt.keySet();
 		for (String key: keys)
 			sbt.put(key, sbt.get(key) - arg_num);
 
 		pgm += parseB(f, sbt);
-		pgm += methodName + "End:\n";
+		pgm += mname + "End:\n";
 		pgm += "\tSTOREOFF -" + (arg_num + 1) + "\n";
 		int local = 0;
 		for (String key: keys)
@@ -119,10 +170,14 @@ public class BaliCompiler
 		pgm += "\tJUMPIND\n";
 
 		if (retCounter == 0)
-			throw new TokenizerException("Missing return statement for method " + methodName);
+			throw new TokenizerException("Missing return statement for method " + mname);
 
 		return pgm;
 	}
+	
+	
+	
+	
 	static String parseFp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		if (f.check(')'))
@@ -130,15 +185,25 @@ public class BaliCompiler
 		else
 			return parseF(f, sbt);
 	}
+	
+	
+	
+	
 	static String parseF(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		if (!f.check("int"))
 			throw new TokenizerException("Line number " + f.lineNo() + " : Invalid Formal Type");
-		String id = f.getWord();
+		String ID = f.getWord();
+		if(checkReservedKeyword(ID))
+			throw new TokenizerException("Line number "+f.lineNo()+" : "+ ID +" is a keyword");
 		int idx = sbt.size();
-		sbt.put(id, idx);
-		return id + parseTIDp(f, sbt);
+		sbt.put(ID, idx);
+		return ID + parseTIDp(f, sbt);
 	}
+
+	
+	
+	
 	static String parseTIDp(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		if (f.check(')'))
@@ -146,16 +211,26 @@ public class BaliCompiler
 		else
 			return parseTID(f, sbt) + parseTIDp(f, sbt);
 	}
+	
+	
+	
+	
 	static String parseTID(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		if (!f.check(','))
-			throw new TokenizerException("Line number " + f.lineNo() + " : Missing Comma");
+			throw new TokenizerException("Line number " + f.lineNo() + " : , missing");
 		if (!f.check("int"))
 			throw new TokenizerException("Line number " + f.lineNo() + " : Missing Formal Type");
-		String s = f.getWord();
+		
+		String ID = f.getWord();
+		if(checkReservedKeyword(ID))
+			throw new TokenizerException("Line number "+f.lineNo()+" : "+ ID +" is a keyword");
+		else if (sbt.containsKey(ID) || methodname.containsKey(ID))
+			throw new TokenizerException("Line number "+f.lineNo() + " : Variable name " + ID + " is already used");
 		int idx = sbt.size();
-		sbt.put(s, idx);
-		return null;
+		
+		sbt.put(ID, idx);
+		return "";
 	}	
 	
 	
@@ -189,19 +264,16 @@ public class BaliCompiler
 			throw new TokenizerException("Line number "+f.lineNo() + " : Valid variable name expected");
 		
 		String var = f.getWord();
-		if(methodname.containsKey(var))
-		    throw new TokenizerException("Variable name already used");
+		if(checkReservedKeyword(var))
+			throw new TokenizerException("Line number " + f.lineNo() + " : " + var + " is a reserved keyword");
+		else if(methodname.containsKey(var) || sbt.containsKey(var))
+		    throw new TokenizerException("Line number " + f.lineNo() + " : Variable name " + var + " already used");
 		else 
 		{
-			int s = sbt.size();
 			sbt.put(var, sbt.size() - arg_num + 2);
 			return "\tPUSHIMM 0\n" + parseEp(f, sbt, var, arg_num) + parseIDEp(f, sbt, arg_num);
 		}
 	}
-	
-	
-	
-	 
 	
 	
 	
@@ -251,7 +323,7 @@ public class BaliCompiler
 		{
 			String var = f.getWord();
 			int s = sbt.size();
-			sbt.put(var, s - arg_num + 1);
+			sbt.put(var, s - arg_num + 2);
 			
 			return "\tPUSHIMM 0\n" + parseEp(f, sbt, var, arg_num);
 		}
@@ -268,6 +340,10 @@ public class BaliCompiler
 			return "";
 		return parseS(f, sbt) + parseSp(f, sbt);
 	}
+	
+	
+	
+	
 	static String parseS(SamTokenizer f, Hashtable<String, Integer> sbt)
 	{
 		if (f.check('{'))
@@ -279,7 +355,7 @@ public class BaliCompiler
 			retCounter++;
 			String parsedEXP = parseEXP(f, sbt);
 			if(!f.check(';'))
-				throw new TokenizerException("Line number " + f.lineNo() + " : Semicolon expected");
+				throw new TokenizerException("Line number " + f.lineNo() + " : ; expected");
 			return parsedEXP + "\tJUMP " + mname + "End\n";
 
 		}
@@ -296,14 +372,31 @@ public class BaliCompiler
 				ifs += "\tJUMPC newLabel" + l1 + "\n";
 				if(f.check(')'))
 				{
-					String parsedS = parseS(f, sbt);
+					int temp_retCounter_1 = retCounter;
+					
+					String parsedS1 = parseS(f, sbt);
+					
+					//diff_retCounter_1 is used to check if parsedS has a return statement
+					int diff_retCounter_1 = retCounter - temp_retCounter_1;
+					
 					if(f.check("else"))
 					{
+						int temp_retCounter_2 = retCounter;
+						
 						String parsedS2 = parseS(f, sbt);
 						ifs += parsedS2;
+						
+						//diff_retCounter_2 is used to check if parsedS2 has a return statement
+						int diff_retCounter_2 = retCounter - temp_retCounter_2;
+						
+						
+						//If either parsedS1 or parsedS2 did not contain a return statement, then this if-else also doesn't contain a return.  
+						//Therefore, if either diff_retCounter1 or diff_retCounter2 are 0, then retCounter is set to the value it had before start of if-else.
+						retCounter = temp_retCounter_1 + Math.min(diff_retCounter_1, diff_retCounter_2);
+						
 						ifs += "\tJUMP newLabel" + l2 + "\n";
 						ifs += "newLabel" + l1 + ":\n";
-						ifs += parsedS;
+						ifs += parsedS1;
 						ifs += "newLabel" + l2 + ":\n";
 						return ifs;
 					}
@@ -311,14 +404,15 @@ public class BaliCompiler
 						throw new TokenizerException("Line number " + f.lineNo() + ": Missing else statment");
 				}
 				else
-					throw new TokenizerException("Line number " + f.lineNo() + ": Missing close parenthesis");
+					throw new TokenizerException("Line number " + f.lineNo() + ": ) expected at end of if expression");
 			}
 			else
-				throw new TokenizerException("Line number " + f.lineNo() + ": Missing open parenthesis");
+				throw new TokenizerException("Line number " + f.lineNo() + ": ( expected at start of if expression");
 		}
 		else if (f.check("while"))
 		{
 			loop++;
+			int temp_retCounter = retCounter;
 			int l1 = wlabelCounter;
 			int l2 = wlabelCounter + 1;
 			int temp = envCounter;
@@ -339,13 +433,19 @@ public class BaliCompiler
 					whs += "Label" + l2 + ":\n";
 					loop--;
 					envCounter = temp;
+					
+					//A return statement inside while should not increase the return statement count
+					//since it is possible that this while never gets executed.
+					//Therefore, it is set to the value it had before start of while loop.
+					retCounter = temp_retCounter;
+					
 					return whs;
 				}
 				else
-					throw new TokenizerException("Line number " + f.lineNo() + ": Missing close parenthesis");
+					throw new TokenizerException("Line number " + f.lineNo() + ": Missing )");
 			}
 			else
-				throw new TokenizerException("Line number " + f.lineNo() + ": Missing open parenthesis");
+				throw new TokenizerException("Line number " + f.lineNo() + ": Missing (");
 		}
 		else if (f.check("break"))
 		{
@@ -353,11 +453,17 @@ public class BaliCompiler
 				throw new TokenizerException("Line number " + f.lineNo() + ": Break outside the loop");
 			else if(f.check(';'))
 				return "\tJUMP Label" + envCounter + "\n";
-			else throw new TokenizerException("Semicolon expected");
+			else throw new TokenizerException("Line number " + f.lineNo() + " : ; expected");
 		}
 
+		//Handling the case when S is an assignment statement
 		String var = f.getWord();
-		if(!sbt.containsKey(var))
+		
+		if(checkReservedKeyword(var))
+			throw new TokenizerException("Line number "+f.lineNo()+ " : "+var + " is a reserved keyword");
+		else if (methodname.containsKey(var))
+			throw new TokenizerException("Line number "+f.lineNo()+ " : "+var+" is a method name");
+		else if(!sbt.containsKey(var))
 			throw new TokenizerException("Line number "+f.lineNo()+ " : Variable undefined");
 
 		if(f.check('='))
@@ -366,7 +472,7 @@ public class BaliCompiler
 			if(f.check(';'))
 				return parsedEXP + "\tSTOREOFF "+sbt.get(var)+"\n";
 			else
-				throw new TokenizerException("Line number " + f.lineNo() + " : Semicolon expected");
+				throw new TokenizerException("Line number " + f.lineNo() + " : ; expected");
 		}
 		else throw new TokenizerException("Line number "+f.lineNo()+ " : Assignment expected");
 	}
@@ -406,15 +512,23 @@ public class BaliCompiler
 			
 		case WORD:
 			String ID = f.getWord();
+			
+			if(checkReservedKeyword(ID))
+				throw new TokenizerException("Line number "+f.lineNo()+ " : "+ ID + " is a reserved keyword");
 
-			if(methodname.containsKey(ID))
+			else if(methodname.containsKey(ID))
 			{
 				String mcall = "";
 				mcall += "\tPUSHIMM 0\n";
 				if(f.check('('))
 				{
+					//@JIN why is this an array? Can't we just do with one arg_num?
 					int [] arg_num = {0};
 					mcall += parseA(f, sbt, arg_num);
+					
+					//Output error if the number of arguments in function call not same as number of arguments in function definition
+					if(arg_num[0] !=methodname.get(ID))
+						throw new TokenizerException("Line number " + f.lineNo() + " : Wrong number of arguments to " + ID);
 					mcall += "\tLINK\n";
 					mcall += "\tJSR " + ID + "\n";
 					mcall += "\tPOPFBR\n";
@@ -582,7 +696,7 @@ public class BaliCompiler
 			arg_num[0]++;
 			return parseEXP(f, sbt) + parseAp(f, sbt, arg_num);
 		}
-		else throw new TokenizerException("Invalid Expression");
+		else throw new TokenizerException("Line number " + f.lineNo() + " : Invalid function call - perhaps a missing , or )");
 	}
 
 	
@@ -609,3 +723,7 @@ public class BaliCompiler
 		}
 	}
 }
+
+
+
+// Typos & Bugs: At one place, sbt.put had s-arg_num+1 instead of s-arg_num+2. Fixed that.
