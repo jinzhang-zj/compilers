@@ -16,7 +16,7 @@ public class BaliCompiler
 {
 	static Hashtable<String, Integer> methodname;
 	static int loop;
-	static int ilabelCounter, wlabelCounter, retCounter;
+	static int ilabelCounter, wlabelCounter, retCounter, envCounter;
 	static String mname;
 	static String checkType(SamTokenizer f)
 	{
@@ -321,6 +321,8 @@ public class BaliCompiler
 			loop++;
 			int l1 = wlabelCounter;
 			int l2 = wlabelCounter + 1;
+			int temp = envCounter;
+			envCounter = l2;
 			wlabelCounter += 2;
 			String whs = "Label" + l1 + ":\n";
 			if(f.check('('))
@@ -336,6 +338,7 @@ public class BaliCompiler
 					whs += "\tJUMP Label" + l1 + "\n";
 					whs += "Label" + l2 + ":\n";
 					loop--;
+					envCounter = temp;
 					return whs;
 				}
 				else
@@ -349,7 +352,7 @@ public class BaliCompiler
 			if (loop <= 0)
 				throw new TokenizerException("Line number " + f.lineNo() + ": Break outside the loop");
 			else if(f.check(';'))
-				return "\tJUMP Label" + (wlabelCounter - 1) + "\n";
+				return "\tJUMP Label" + envCounter + "\n";
 			else throw new TokenizerException("Semicolon expected");
 		}
 
@@ -593,6 +596,7 @@ public class BaliCompiler
 		ilabelCounter = 0;
 		wlabelCounter = 0;
 		retCounter = 0;
+		envCounter = 0;
 		methodname = new Hashtable<String, Integer>();
 		String result = compiler (args[0]);
 		try {
