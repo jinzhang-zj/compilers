@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Created-By: Jin
+Class-Path: ./SaM-2.6.2.jar
+Main-Class: BaliCompiler
